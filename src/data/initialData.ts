@@ -1,0 +1,313 @@
+import { Empresa, Accionista, ActaAsamblea, ContratoMutuo, TransaccionBancaria } from '../types';
+
+export const INITIAL_TASA_BCV = 43.20; // Bs. por 1 USD (tasa oficial de referencia)
+
+export const INITIAL_EMPRESAS: Empresa[] = [
+  {
+    id: 'emp-1',
+    razon_social: 'DISTRIBUIDORA Y SUMINISTROS INDUSTRIALES CARACAS, C.A.',
+    rif_empresa: 'J-40891234-5',
+    registro_mercantil: 'Registro Mercantil Segundo de la Circunscripción Judicial del Distrito Capital y Estado Miranda, en fecha 14 de marzo de 2018, bajo el Nro. 28, Tomo 142-A',
+    representante_legal: 'Carlos Eduardo Mendoza Silva',
+    cedula_representante: '14.892.110',
+    cargo_representante: 'Director Presidente',
+    tipo_contribuyente: 'Especial', // Sujeto Pasivo Especial -> Activa retención y control IGTF 3%
+    capital_social_ves: 350000.00,
+    ciudad: 'Caracas',
+    estado: 'Distrito Capital',
+    direccion_fiscal: 'Av. Francisco de Miranda, Torre Cavendes, Piso 7, Ofic. 7-B, Los Palos Grandes, Chacao',
+    telefono: '+58 (212) 285-4011',
+    email: 'administracion@suministroscaracas.com.ve',
+  },
+  {
+    id: 'emp-2',
+    razon_social: 'AGROPECUARIA Y ALIMENTOS VALENCIA, C.A.',
+    rif_empresa: 'J-31456789-0',
+    registro_mercantil: 'Registro Mercantil Primero del Estado Carabobo, en fecha 05 de mayo de 2021, bajo el Nro. 12, Tomo 88-A',
+    representante_legal: 'Alejandro José Carrillo Rojas',
+    cedula_representante: '12.345.678',
+    cargo_representante: 'Gerente General',
+    tipo_contribuyente: 'Ordinario',
+    capital_social_ves: 180000.00,
+    ciudad: 'Valencia',
+    estado: 'Carabobo',
+    direccion_fiscal: 'Zona Industrial Castillito, Galpón 4, San Diego, Valencia',
+    telefono: '+58 (241) 871-3320',
+    email: 'contacto@agrovalencia.com.ve',
+  }
+];
+
+export const INITIAL_ACCIONISTAS: Accionista[] = [
+  {
+    id: 'acc-1',
+    empresa_id: 'emp-1',
+    nombre_accionista: 'Carlos Eduardo Mendoza Silva',
+    cedula_accionista: '14.892.110',
+    rif_accionista: 'V-14892110-3',
+    porcentaje_acciones: 65,
+    cargo_o_condicion: 'Accionista Mayoritario y Director Presidente',
+    telefono: '+58 (414) 234-8901',
+    email: 'cmendoza@suministroscaracas.com.ve',
+    billetera_usdt: 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbXdf',
+    banco_frecuente: 'Banesco Banco Universal',
+    numero_cuenta: '0134-0012-34-1234567890',
+  },
+  {
+    id: 'acc-2',
+    empresa_id: 'emp-1',
+    nombre_accionista: 'Mariana Coromoto Rivas Peña',
+    cedula_accionista: '18.342.905',
+    rif_accionista: 'V-18342905-1',
+    porcentaje_acciones: 35,
+    cargo_o_condicion: 'Accionista y Directora Vicepresidenta',
+    telefono: '+58 (412) 987-6543',
+    email: 'mrivas@suministroscaracas.com.ve',
+    billetera_usdt: 'TY1b8K76qDk6N7Gq8H8rD3WbK7Z1T8ZqB7',
+    banco_frecuente: 'Banco Mercantil',
+    numero_cuenta: '0105-0114-88-9876543210',
+  },
+  {
+    id: 'acc-3',
+    empresa_id: 'emp-2',
+    nombre_accionista: 'Alejandro José Carrillo Rojas',
+    cedula_accionista: '12.345.678',
+    rif_accionista: 'V-12345678-2',
+    porcentaje_acciones: 100,
+    cargo_o_condicion: 'Accionista Único y Gerente',
+    telefono: '+58 (424) 456-7890',
+    email: 'acarrillo@agrovalencia.com.ve',
+    banco_frecuente: 'Banco Provincial',
+    numero_cuenta: '0108-0023-45-6789012345',
+  }
+];
+
+export const INITIAL_ACTAS: ActaAsamblea[] = [
+  {
+    id: 'acta-1',
+    empresa_id: 'emp-1',
+    numero_acta: 'ASAM-EXT-2026-01',
+    tipo_asamblea: 'extraordinaria',
+    fecha_asamblea: '2026-01-15',
+    hora_inicio: '10:00 AM',
+    hora_fin: '11:45 AM',
+    monto_maximo_autorizado_pagar: 150000.00, // hasta $150,000 en Cuentas por Pagar Socios
+    monto_maximo_autorizado_cobrar: 25000.00, // hasta $25,000 en Cuentas por Cobrar Socios
+    quorum_capital_porcentaje: 100,
+    estatus_libro_fisico: true, // Asentado y firmado en libro sellado
+    fecha_asentamiento_libro: '2026-01-16',
+    presidente_mesa: 'Carlos Eduardo Mendoza Silva',
+    secretario_mesa: 'Mariana Coromoto Rivas Peña',
+    observaciones: 'Aprobación unánime de líneas de mutuo operativo con cláusulas de indexación a tasa oficial BCV y registro de bienes digitales (USDT).',
+  }
+];
+
+export const INITIAL_CONTRATOS: ContratoMutuo[] = [
+  {
+    id: 'cont-1',
+    uuid_publico: '4f89d123-7a91-4562-b12e-9876543210ab',
+    correlativo: 'MUT-2026-0001',
+    empresa_id: 'emp-1',
+    accionista_id: 'acc-1',
+    tipo_flujo: 'socio_a_empresa',
+    tipo_activo: 'USD_EFECTIVO',
+    monto_original: 12500.00,
+    tasa_bcv_fecha: 43.20,
+    monto_indexado_usd: 12500.00,
+    monto_indexado_ves: 540000.00,
+    aplica_interes: false, // Gratuito por ser socio, frena intereses presuntos
+    plazo_meses: 12,
+    fecha_inicio: '2026-02-10',
+    fecha_vencimiento: '2027-02-10',
+    destino_fondos: 'Reposición urgente de inventario importado de rodamientos y pago de flete aduanero en Puerto Cabello.',
+    estado: 'activo',
+    riesgo_dividendo_aceptado: false,
+    saldo_pendiente: 12500.00,
+    soporte: {
+      id: 'sop-1',
+      contrato_id: 'cont-1',
+      tipo_soporte: 'efectivo_caja',
+      recibo_caja_correlativo: 'REC-2026-0012',
+      fecha_transaccion: '2026-02-10',
+      hora_transaccion: '11:30 AM',
+      hash_documento_sha256: '7c9e13a48bf562e84d12c98031d279e2a84b11f3d6748951ac32014fb023e981',
+      txhash_blockchain_polygon: '0x3f98214a1e9487c5369bb9120485d1e479a02cb48691f13b567e9120483a9e10',
+      block_number: 62849102,
+      timestamp_iso: '2026-02-10T15:30:00Z',
+      igtf_aplica: true, // Sujeto Pasivo Especial recibiendo divisas en efectivo
+      igtf_monto_usd: 375.00, // 3%
+      igtf_monto_ves: 16200.00,
+    }
+  },
+  {
+    id: 'cont-2',
+    uuid_publico: '8a12b456-9c34-4781-a89f-1234567890cd',
+    correlativo: 'MUT-2026-0002',
+    empresa_id: 'emp-1',
+    accionista_id: 'acc-1',
+    tipo_flujo: 'socio_a_empresa',
+    tipo_activo: 'USDT',
+    monto_original: 20000.00,
+    tasa_bcv_fecha: 43.20,
+    monto_indexado_usd: 20000.00,
+    monto_indexado_ves: 864000.00,
+    aplica_interes: false,
+    plazo_meses: 6,
+    fecha_inicio: '2026-02-20',
+    fecha_vencimiento: '2026-08-20',
+    destino_fondos: 'Mutuo de bien mueble incorpóreo fungible (USDT) para liquidación de servicios de hosting y software corporativo en el exterior.',
+    estado: 'activo',
+    riesgo_dividendo_aceptado: false,
+    saldo_pendiente: 20000.00,
+    soporte: {
+      id: 'sop-2',
+      contrato_id: 'cont-2',
+      tipo_soporte: 'blockchain_txid',
+      wallet_origen: 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbXdf',
+      wallet_destino: 'TCorpDistribuidoraCaracasTreasury88X',
+      red_blockchain: 'TRON (TRC-20)',
+      txid_blockchain: 'e4d812390a7865bc12ef89345091a2345bcdef901234567890abcdef12345678',
+      fecha_transaccion: '2026-02-20',
+      hora_transaccion: '04:15 PM',
+      hash_documento_sha256: '92ba18e745f1c29038d1746a83091e45b1287c90384a1e902b48956c1234ef01',
+      txhash_blockchain_polygon: '0x99a8124bc8190234def1289456012847a9c8b745e128903456bcdef123456789',
+      block_number: 62910481,
+      timestamp_iso: '2026-02-20T20:15:00Z',
+      igtf_aplica: true,
+      igtf_monto_usd: 600.00,
+      igtf_monto_ves: 25920.00,
+    }
+  },
+  {
+    id: 'cont-3',
+    uuid_publico: 'd456e789-1234-4abc-9def-5678901234ef',
+    correlativo: 'MUT-2026-0003',
+    empresa_id: 'emp-1',
+    accionista_id: 'acc-2',
+    tipo_flujo: 'socio_a_empresa',
+    tipo_activo: 'VES',
+    monto_original: 518400.00,
+    tasa_bcv_fecha: 43.20,
+    monto_indexado_usd: 12000.00, // Indexación a tasa BCV en fecha de firma
+    monto_indexado_ves: 518400.00,
+    aplica_interes: false,
+    plazo_meses: 8,
+    fecha_inicio: '2026-03-01',
+    fecha_vencimiento: '2026-11-01',
+    destino_fondos: 'Pago de nómina operativa quincenal y liquidación de aportes patronales IVSS/FAOV.',
+    estado: 'activo',
+    riesgo_dividendo_aceptado: false,
+    saldo_pendiente: 518400.00,
+    soporte: {
+      id: 'sop-3',
+      contrato_id: 'cont-3',
+      tipo_soporte: 'bancario',
+      referencia_bancaria: 'REF-0089234190',
+      banco_origen: 'Banco Mercantil',
+      banco_destino: 'Banesco Banco Universal',
+      numero_cuenta_origen: '0105-0114-88-9876543210',
+      numero_cuenta_destino: '0134-0988-12-0001928374',
+      fecha_transaccion: '2026-03-01',
+      hora_transaccion: '09:20 AM',
+      hash_documento_sha256: 'a12b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+      txhash_blockchain_polygon: '0x12a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3',
+      block_number: 63012903,
+      timestamp_iso: '2026-03-01T13:20:00Z',
+      igtf_aplica: false, // Transferencia en Bolívares bancarios no genera IGTF 3%
+      igtf_monto_usd: 0,
+      igtf_monto_ves: 0,
+    }
+  },
+  {
+    id: 'cont-4',
+    uuid_publico: 'f789a123-bcde-4567-8901-23456789abcd',
+    correlativo: 'MUT-2026-0004',
+    empresa_id: 'emp-1',
+    accionista_id: 'acc-2',
+    tipo_flujo: 'empresa_a_socio', // CUENTAS POR COBRAR - ALTO RIESGO DIVIDENDO PRESUNTO ART. 72 LISLR
+    tipo_activo: 'USD_TRANSFERENCIA',
+    monto_original: 4500.00,
+    tasa_bcv_fecha: 43.20,
+    monto_indexado_usd: 4500.00,
+    monto_indexado_ves: 194400.00,
+    aplica_interes: true, // OBLIGATORIO: Tasa comercial para desvirtuar Dividendo Presunto
+    tasa_interes: 1.5, // 1.5% mensual comercial
+    plazo_meses: 3, // Plazo estricto < 180 días
+    fecha_inicio: '2026-03-05',
+    fecha_vencimiento: '2026-06-05',
+    destino_fondos: 'Financiamiento temporal de gastos de representación y viaje comercial a Medellín para negociación directa de alianzas con fabricantes.',
+    motivo_comercial: 'Representación comercial corporativa y firma de acuerdos de distribución exclusiva en la feria industrial de proveedores.',
+    estado: 'activo',
+    riesgo_dividendo_aceptado: true, // Alerta Roja Aceptada
+    saldo_pendiente: 4500.00,
+    soporte: {
+      id: 'sop-4',
+      contrato_id: 'cont-4',
+      tipo_soporte: 'bancario',
+      referencia_bancaria: 'REF-7712093845',
+      banco_origen: 'Banesco (Cuenta Moneda Extranjera)',
+      banco_destino: 'Banco Mercantil (Cuenta Custodia Divisas)',
+      numero_cuenta_origen: '0134-0988-12-0001928374',
+      numero_cuenta_destino: '0105-0114-88-9876543210',
+      fecha_transaccion: '2026-03-05',
+      hora_transaccion: '02:40 PM',
+      hash_documento_sha256: 'b45c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c',
+      txhash_blockchain_polygon: '0x7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d',
+      block_number: 63089124,
+      timestamp_iso: '2026-03-05T18:40:00Z',
+      igtf_aplica: false,
+      igtf_monto_usd: 0,
+      igtf_monto_ves: 0,
+    }
+  }
+];
+
+export const INITIAL_TRANSACCIONES_BANCARIAS: TransaccionBancaria[] = [
+  {
+    id: 'tx-1',
+    empresa_id: 'emp-1',
+    fecha: '2026-03-12',
+    banco: 'Banesco Banco Universal',
+    referencia: 'REF-9921048712',
+    concepto: 'TRANSF CARLOS MENDOZA APORTE CAPITAL TRABAJO',
+    monto: 345600.00, // Aprox $8,000 USD a tasa BCV
+    tipo: 'credito',
+    estado_conciliacion: 'pendiente',
+    sugerencia_socio_id: 'acc-1',
+  },
+  {
+    id: 'tx-2',
+    empresa_id: 'emp-1',
+    fecha: '2026-03-14',
+    banco: 'Banco Mercantil',
+    referencia: 'REF-3301928475',
+    concepto: 'PAGO MOVIL MARIANA RIVAS PRESTAMO CAJA CHICA',
+    monto: 129600.00, // Aprox $3,000 USD a tasa BCV
+    tipo: 'credito',
+    estado_conciliacion: 'pendiente',
+    sugerencia_socio_id: 'acc-2',
+  },
+  {
+    id: 'tx-3',
+    empresa_id: 'emp-1',
+    fecha: '2026-03-01',
+    banco: 'Banesco Banco Universal',
+    referencia: 'REF-0089234190',
+    concepto: 'TRANSFERENCIA INGRESO MARIANA RIVAS NOMINA',
+    monto: 518400.00,
+    tipo: 'credito',
+    estado_conciliacion: 'conciliado',
+    contrato_vinculado_id: 'cont-3',
+  },
+  {
+    id: 'tx-4',
+    empresa_id: 'emp-1',
+    fecha: '2026-03-05',
+    banco: 'Banesco (Cuenta Moneda Extranjera)',
+    referencia: 'REF-7712093845',
+    concepto: 'DEBITO PRESTAMO TEMPORAL MARIANA RIVAS VIATICOS',
+    monto: 194400.00,
+    tipo: 'debito',
+    estado_conciliacion: 'conciliado',
+    contrato_vinculado_id: 'cont-4',
+  }
+];
