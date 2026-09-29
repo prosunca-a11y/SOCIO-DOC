@@ -1,4 +1,5 @@
 import { Empresa, Accionista, ContratoMutuo } from '../types';
+import * as XLSX from 'xlsx';
 
 export interface FiscalCsvOptions {
   delimiter?: ';' | ',';
@@ -303,3 +304,119 @@ export async function copyFiscalClosingToClipboard(
     return false;
   }
 }
+
+/**
+ * Generates the CSV for the Monthly Calculation Sheet (Memoria de Cálculo de Intereses Indexados)
+ * with the two-column format (Bs. vs USD), interest at 12% USD, and BCV month-end conversion.
+ */
+export function generateMemoriaCalculoCSV(
+  contrato: ContratoMutuo,
+  empresa: Empresa,
+  accionista: Accionista,
+  tasaBCVCierre: number,
+  tasaAnual: number = 12,
+  porcentajeRetencion: number = 5,
+  delimiter: ';' | ',' = ';'
+): string {
+  const lines: string[] = [];
+  const montoUSD = contrato.monto_indexado_usd || (contrato.tipo_activo === 'VES' ? contrato.monto_original / contrato.tasa_bcv_fecha : contrato.monto_original);
+  const montoVES = contrato.monto_original * (contrato.tipo_activo === 'VES' ? 1 : contrato.tasa_bcv_fecha);
+
+  // Interest math (30 days standard month)
+  const diasMes = 30;
+  const interesMesUSD = (montoUSD * (tasaAnual / 100) * diasMes) / 360;
+  const interesMesVES = interesMesUSD * tasaBCVCierre;
+  const retencionISLRVES = (interesMesVES * porcentajeRetencion) / 100;
+  const netoVES = interesMesVES - retencionISLRVES;
+
+  lines.push([escapeCsvValue('MEMORIA DE CÁLCULO MENSUAL - INTERESES INDEXADOS CON DOBLE MONEDA', delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('SOCIEDAD MERCANTIL', delimiter), escapeCsvValue(empresa.razon_social, delimiter), escapeCsvValue('R.I.F.', delimiter), escapeCsvValue(empresa.rif_empresa, delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('ACCIONISTA MUTUARIO', delimiter), escapeCsvValue(accionista.nombre_accionista, delimiter), escapeCsvValue('C.I. / R.I.F.', delimiter), escapeCsvValue(`${accionista.cedula_accionista} / ${accionista.rif_accionista}`, delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('CONTRATO DE MUTUO NRO', delimiter), escapeCsvValue(contrato.correlativo, delimiter), escapeCsvValue('FECHA CONTRATO', delimiter), escapeCsvValue(contrato.fecha_inicio, delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('BLINDAJE FISCAL', delimiter), escapeCsvValue('Art. 72 LISLR (Presunción de Dividendos) | Art. 16 Num 3 LIVA (No Sujeto a IVA) | Dto. 1808 (Retención ISLR)', delimiter)].join(delimiter));
+  lines.push('');
+
+  // Header columns
+  lines.push([
+    escapeCsvValue('FECHA', delimiter),
+    escapeCsvValue('CONCEPTO / OPERACIÓN', delimiter),
+    escapeCsvValue('REF. BANCARIA', delimiter),
+    escapeCsvValue('COLUMNA 1: MOVIMIENTO BANCO (BS.)', delimiter),
+    escapeCsvValue('TASA BCV OPERACIÓN (BS./USD)', delimiter),
+    escapeCsvValue('COLUMNA 2: CONVERTIDO A DÓLARES (USD)', delimiter),
+    escapeCsvValue('SALDO DEUDOR (USD)', delimiter),
+    escapeCsvValue('DÍAS DEVENGADOS', delimiter),
+    escapeCsvValue(`INTERÉS DEVENGADO AL ${tasaAnual}% ANUAL (USD)`, delimiter),
+  ].join(delimiter));
+
+  // Initial disbursement row
+  lines.push([
+    escapeCsvValue(contrato.fecha_inicio, delimiter),
+    escapeCsvValue('Disposición de Fondos / Desembolso Inicial', delimiter),
+    escapeCsvValue(contrato.soporte.referencia_bancaria || 'TX-BANCARIA', delimiter),
+    escapeCsvValue(formatNumberForCsv(montoVES, delimiter), delimiter),
+    escapeCsvValue(formatNumberForCsv(contrato.tasa_bcv_fecha, delimiter), delimiter),
+    escapeCsvValue(formatNumberForCsv(montoUSD, delimiter), delimiter),
+    escapeCsvValue(formatNumberForCsv(montoUSD, delimiter), delimiter),
+    escapeCsvValue(diasMes.toString(), delimiter),
+    escapeCsvValue(formatNumberForCsv(interesMesUSD, delimiter), delimiter),
+  ].join(delimiter));
+
+  lines.push('');
+  lines.push([escapeCsvValue('RESUMEN Y LIQUIDACIÓN FISCAL DE FIN DE MES PARA NOTA DE DÉBITO', delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('Total Intereses Devengados en Moneda de Cuenta (USD)', delimiter), escapeCsvValue(formatNumberForCsv(interesMesUSD, delimiter), delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('Tasa Oficial BCV Cierre de Mes (Bs./USD)', delimiter), escapeCsvValue(formatNumberForCsv(tasaBCVCierre, delimiter), delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('Total Intereses en Moneda Nacional para Nota de Débito (Bs.)', delimiter), escapeCsvValue(formatNumberForCsv(interesMesVES, delimiter), delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('Alícuota IVA (Art. 16 Num. 3 Ley de IVA - NO SUJETO)', delimiter), escapeCsvValue('0,00% (NO SUJETO)', delimiter)].join(delimiter));
+  lines.push([escapeCsvValue(`Retención de ISLR (${porcentajeRetencion}% según Dto. 1808 Art. 9 Num. 8)`, delimiter), escapeCsvValue(formatNumberForCsv(retencionISLRVES, delimiter), delimiter)].join(delimiter));
+  lines.push([escapeCsvValue('Monto Neto a Liquidar en Bolívares (Bs.)', delimiter), escapeCsvValue(formatNumberForCsv(netoVES, delimiter), delimiter)].join(delimiter));
+
+  return '\ufeff' + lines.join('\r\n');
+}
+
+
+/**
+ * Triggers a direct client-side file download of the Excel report.
+ */
+export function downloadFiscalClosingExcel(
+  empresa: Empresa,
+  contratos: ContratoMutuo[],
+  accionistas: Accionista[],
+  tasaBCV: number,
+  options: FiscalCsvOptions = {}
+): void {
+  const csvContent = generateFiscalClosingCSV(empresa, contratos, accionistas, tasaBCV, options);
+  const rows = csvContent.split('\r\n').map(line => line.split(';'));
+  
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, 'Reporte Fiscal');
+  
+  const sanitizedRif = empresa.rif_empresa.replace(/[^a-zA-Z0-9]/g, '');
+  const fechaStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const filename = `Reporte_Fiscal_SENIAT_CxP_CxC_${sanitizedRif}_${fechaStr}.xlsx`;
+  
+  XLSX.writeFile(wb, filename);
+}
+
+/**
+ * Triggers a direct client-side file download of the Excel Memoria de Calculo.
+ */
+export function downloadMemoriaCalculoExcel(
+  contrato: ContratoMutuo,
+  empresa: Empresa,
+  accionista: Accionista,
+  tasaBCVCierre: number,
+  tasaAnual: number = 12,
+  porcentajeRetencion: number = 5
+): void {
+  const csv = generateMemoriaCalculoCSV(contrato, empresa, accionista, tasaBCVCierre, tasaAnual, porcentajeRetencion);
+  const rows = csv.split('\r\n').map(line => line.split(';'));
+  
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, 'Memoria de Calculo');
+  
+  XLSX.writeFile(wb, `Memoria_Calculo_Intereses_${contrato.correlativo}.xlsx`);
+}
+

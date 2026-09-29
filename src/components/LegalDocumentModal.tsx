@@ -1,18 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ContratoMutuo, Empresa, Accionista, ActaAsamblea, CapitalizacionAcreencia } from '../types';
 import { formatVES, formatUSD, formatUSDT, formatFechaLarga, numeroALetras } from '../utils/formatters';
-import { Printer, Copy, Check, X, ShieldCheck, FileText, Landmark, Download, FileDown } from 'lucide-react';
-import { downloadContractWord, downloadContractPDF } from '../utils/documentExport';
+import { Printer, Copy, Check, X, ShieldCheck, FileText, Landmark, Download, FileDown, FileSpreadsheet, Calculator } from 'lucide-react';
+import { 
+  downloadContractWord, 
+  downloadContractPDF, 
+  generateContractText,
+  generateActaAsambleaText,
+  downloadActaWord,
+  downloadActaExcel,
+  downloadActaPDF,
+  generateReciboInteresesText,
+  downloadReciboInteresesWord,
+  downloadReciboInteresesPDF,
+  generateLineaCreditoRotativaText,
+  downloadLineaCreditoWord,
+  downloadLineaCreditoPDF,
+  downloadLineaCreditoExcel
+} from '../utils/documentExport';
 
 interface LegalDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  documentType: 'contrato' | 'recibo_caja' | 'acta_macro' | 'acta_capitalizacion' | 'informe_comisario';
+  documentType: 'contrato' | 'recibo_caja' | 'acta_macro' | 'acta_capitalizacion' | 'informe_comisario' | 'recibo_intereses' | 'linea_credito';
   contrato?: ContratoMutuo;
   empresa: Empresa;
   accionista?: Accionista;
+  accionistas?: Accionista[];
   actaMacro?: ActaAsamblea;
   capitalizacionData?: CapitalizacionAcreencia;
+  tasaBCV?: number;
+  onOpenMonthlyCalc?: (contrato: ContratoMutuo) => void;
 }
 
 export const LegalDocumentModal: React.FC<LegalDocumentModalProps> = ({
@@ -22,11 +40,49 @@ export const LegalDocumentModal: React.FC<LegalDocumentModalProps> = ({
   contrato,
   empresa,
   accionista,
+  accionistas = [],
   actaMacro,
   capitalizacionData,
+  tasaBCV = 412.50,
+  onOpenMonthlyCalc,
 }) => {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(documentType);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(documentType);
+    }
+  }, [documentType, isOpen]);
+
+  const sociosValidos = accionistas.filter(a => a.empresa_id === empresa.id);
+  const socio1: Accionista = sociosValidos[0] || {
+    id: 's-1',
+    empresa_id: empresa.id,
+    nombre_accionista: empresa.representante_legal,
+    cedula_accionista: empresa.cedula_representante,
+    rif_accionista: `V-${empresa.cedula_representante}`,
+    porcentaje_acciones: 50,
+    cargo_o_condicion: empresa.cargo_representante,
+    es_accionista: true,
+  };
+  const socio2: Accionista = sociosValidos[1] || (
+    accionista && accionista.cedula_accionista !== socio1.cedula_accionista
+      ? accionista
+      : {
+          id: 's-2',
+          empresa_id: empresa.id,
+          nombre_accionista: 'Carlos Eduardo Mendoza Silva',
+          cedula_accionista: '14.285.920',
+          rif_accionista: 'V-14285920-1',
+          porcentaje_acciones: 50,
+          cargo_o_condicion: 'Accionista',
+          es_accionista: true,
+        }
+  );
+  const socioContrato = contrato?.accionista_id ? accionistas.find(a => a.id === contrato.accionista_id) : undefined;
+  const socioBecerra = accionistas.find(a => a.nombre_accionista.toLowerCase().includes('becerra') || a.cedula_accionista.includes('24.224.576'));
+  const socioFirmante: Accionista = socioContrato || accionista || ((empresa.id === 'emp-oni' || empresa.razon_social.toUpperCase().includes('AGRICOLA ONI')) && socioBecerra ? socioBecerra : undefined) || socio2 || socio1;
 
   if (!isOpen) return null;
 
@@ -35,37 +91,70 @@ export const LegalDocumentModal: React.FC<LegalDocumentModalProps> = ({
   };
 
   const handleDownloadWord = () => {
+    if (activeTab === 'linea_credito') {
+      downloadLineaCreditoWord(contrato, empresa, socioFirmante);
+      return;
+    }
+
     if (contrato && accionista && activeTab === 'contrato') {
       downloadContractWord(contrato, empresa, accionista);
       return;
     }
 
-    // Generic Word download for Recibo, Acta, Informe
+    if (activeTab === 'acta_macro') {
+      downloadActaWord(actaMacro, empresa, accionistas, contrato, accionista);
+      return;
+    }
+
+    if (activeTab === 'recibo_intereses') {
+      downloadReciboInteresesWord(contrato, empresa, accionista, 'Febrero 2026', tasaBCV);
+      return;
+    }
+
+    // Generic Word download for Recibo, Acta Capitalización, Informe
     const text = getActiveText();
     const docTitle = activeTab === 'recibo_caja' ? 'Recibo_Caja' :
-      activeTab === 'acta_macro' ? 'Acta_Asamblea_Macro' :
       activeTab === 'acta_capitalizacion' ? 'Acta_Capitalizacion' :
       activeTab === 'informe_comisario' ? 'Informe_Comisario' : 'Documento_Legal';
 
     const htmlContent = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" 
             xmlns:w="urn:schemas-microsoft-com:office:word" 
+            xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"
             xmlns="http://www.w3.org/TR/REC-html40">
       <head>
         <meta charset="utf-8">
         <title>${docTitle}</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
         <style>
-          @page { size: letter; margin: 2.5cm; }
-          body { font-family: 'Times New Roman', serif; font-size: 11.5pt; line-height: 1.4; }
-          p { margin-bottom: 10pt; text-align: justify; }
+          @page { size: letter; margin: 1.0in; }
+          body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.45; color: #000000; margin: 0; padding: 0; }
+          p { margin-bottom: 10pt; margin-top: 0pt; text-align: justify; text-justify: inter-ideograph; }
+          table.header-box { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 16pt; border: 1.5pt solid #1e3a8a; background-color: #f8fafc; }
         </style>
       </head>
       <body>
-        <div style="border-bottom: 2pt solid #1e3a8a; padding-bottom: 5pt; margin-bottom: 15pt;">
-          <strong style="font-size: 12pt; text-transform: uppercase;">${empresa.razon_social}</strong><br/>
-          <span style="font-size: 9pt;">R.I.F. ${empresa.rif_empresa} • ${empresa.registro_mercantil}</span>
-        </div>
-        ${text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`).join('')}
+        <table class="header-box" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding: 10pt 14pt; text-align: center; word-wrap: break-word; overflow-wrap: break-word;">
+              <div style="font-family: Arial, sans-serif; font-size: 12.5pt; font-weight: bold; color: #1e3a8a; text-transform: uppercase; margin-bottom: 3pt;">
+                ${empresa.razon_social}
+              </div>
+              <div style="font-family: 'Times New Roman', serif; font-size: 9.5pt; color: #334155;">
+                <strong>R.I.F.:</strong> ${empresa.rif_empresa} &nbsp;|&nbsp; <strong>REGISTRO MERCANTIL:</strong> ${empresa.registro_mercantil}
+              </div>
+            </td>
+          </tr>
+        </table>
+        ${text.split('\n\n').filter(p => p.trim()).map(p => `<p>${p.trim().replace(/\n/g, '<br/>')}</p>`).join('')}
       </body>
       </html>
     `;
@@ -81,12 +170,36 @@ export const LegalDocumentModal: React.FC<LegalDocumentModalProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadExcel = () => {
+    if (activeTab === 'linea_credito') {
+      downloadLineaCreditoExcel(contrato, empresa, socioFirmante);
+      return;
+    }
+    downloadActaExcel(actaMacro, empresa, accionistas, contrato, accionista);
+  };
+
   const handleDownloadPDF = () => {
+    if (activeTab === 'linea_credito') {
+      downloadLineaCreditoPDF(contrato, empresa, socioFirmante);
+      return;
+    }
+
     if (contrato && accionista && activeTab === 'contrato') {
       downloadContractPDF(contrato, empresa, accionista);
-    } else {
-      window.print();
+      return;
     }
+
+    if (activeTab === 'acta_macro') {
+      downloadActaPDF(actaMacro, empresa, accionistas, contrato, accionista);
+      return;
+    }
+
+    if (activeTab === 'recibo_intereses') {
+      downloadReciboInteresesPDF(contrato, empresa, accionista, 'Febrero 2026', tasaBCV);
+      return;
+    }
+
+    window.print();
   };
 
   const handleCopy = (text: string) => {
@@ -98,58 +211,26 @@ export const LegalDocumentModal: React.FC<LegalDocumentModalProps> = ({
   // Generate legal texts
   const renderContratoText = () => {
     if (!contrato || !accionista) return '';
-
-    const isCrypto = contrato.tipo_activo === 'USDT';
-    const isEfectivo = contrato.tipo_activo === 'USD_EFECTIVO';
-    const isVES = contrato.tipo_activo === 'VES';
-    const isSocioAEmpresa = contrato.tipo_flujo === 'socio_a_empresa';
-
-    if (isCrypto) {
-      return `CONTRATO DE MUTUO DE BIENES MUEBLES DIGITALES (CRIPTOPRÉSTAMO)
-
-Nosotros, ${empresa.razon_social}, sociedad mercantil domiciliada en ${empresa.ciudad}, Estado ${empresa.estado}, constituida e inscrita por ante el ${empresa.registro_mercantil}, inscrita en el Registro Único de Información Fiscal (R.I.F.) Nro. ${empresa.rif_empresa}, debidamente representada en este acto por su ${empresa.cargo_representante}, ciudadano(a) ${empresa.representante_legal}, titular de la Cédula de Identidad Nro. ${empresa.cedula_representante}, en lo sucesivo y a los efectos del presente instrumento denominada "${isSocioAEmpresa ? 'LA MUTUARIA' : 'LA MUTUANTE'}", por una parte; y por la otra, el ciudadano ${accionista.nombre_accionista}, mayor de edad, titular de la Cédula de Identidad Nro. ${accionista.cedula_accionista} e inscrito en el R.I.F. Nro. ${accionista.rif_accionista}, en su cualidad de socio y titular del ${accionista.porcentaje_acciones}% del capital social de la prenombrada compañía, quien en lo sucesivo se denominará "${isSocioAEmpresa ? 'EL MUTUANTE' : 'EL MUTUARIO'}", hemos convenido en celebrar como en efecto celebramos el presente CONTRATO DE MUTUO DE BIENES MUEBLES DIGITALES INCORPÓREOS, regido por las siguientes cláusulas:
-
-PRIMERA (OBJETO Y NATURALEZA DEL ACTIVO): ${isSocioAEmpresa ? 'EL MUTUANTE' : 'LA MUTUANTE'} entrega a título de mutuo (préstamo de consumo) a ${isSocioAEmpresa ? 'LA MUTUARIA' : 'EL MUTUARIO'}, un bien mueble intangible, fungible y digital, específicamente la cantidad de ${numeroALetras(contrato.monto_original)} TOKENS DE LA CRIPTOMONEDA ESTABLE DENOMINADA UNITED STATES DOLLAR TETHER (${formatUSDT(contrato.monto_original)}). Las partes reconocen que el token USDT es un criptoactivo fungible respaldado en valor paritario con el Dólar de los Estados Unidos de América, ampliamente aceptado en las transacciones comerciales lícitas dentro de la República Bolivariana de Venezuela.
-
-SEGUNDA (ENTREGA, RED Y VERIFICACIÓN BLOCKCHAIN - PRUEBA MATERIAL): La entrega efectiva e irreversible del activo se efectuó mediante transferencia electrónica en la red descentralizada de bloques ${contrato.soporte.red_blockchain || 'TRON (TRC-20)'}, originada desde la Billetera Digital (Wallet) propiedad de ${isSocioAEmpresa ? 'EL MUTUANTE' : 'LA MUTUANTE'}, dirección: [${contrato.soporte.wallet_origen || 'Wallet_Origen'}], con destino a la Billetera Digital corporativa propiedad de ${isSocioAEmpresa ? 'LA MUTUARIA' : 'EL MUTUARIO'}, dirección: [${contrato.soporte.wallet_destino || 'Wallet_Destino'}]. La transacción quedó formalmente asentada bajo el Identificador de Transacción Hash (TXID) Nro: [${contrato.soporte.txid_blockchain || 'TXID_PENDIENTE'}], ejecutada en fecha ${formatFechaLarga(contrato.soporte.fecha_transaccion)}. Las partes convienen en que la consulta pública del referido Hash en el explorador de la red constituye prueba plena, incontrovertible e irrefutable de la entrega del activo.
-
-TERCERA (VALORACIÓN CONTABLE Y FISCAL VEN-NIF): A los exclusivos efectos de su asentamiento contable en los libros de la empresa conforme a los principios de contabilidad generalmente aceptados en Venezuela (VEN-NIF) y a las exigencias probatorias del Servicio Nacional Integrado de Administración Aduanera y Tributaria (SENIAT), las partes acuerdan registrar la operación en moneda de curso legal por la cantidad de ${formatVES(contrato.monto_indexado_ves)} (${numeroALetras(contrato.monto_indexado_ves)} BOLÍVARES), calculados a la tasa de cambio oficial de referencia del Banco Central de Venezuela (BCV) de Bs. ${contrato.tasa_bcv_fecha.toFixed(2)} por unidad de cuenta para la fecha de la transferencia.
-
-CUARTA (${isSocioAEmpresa ? 'GRATUIDAD Y AUSENCIA DE INTERESES' : 'TASA DE INTERÉS COMERCIAL OBLIGATORIA'}): ${isSocioAEmpresa ? 'El presente préstamo de bienes digitales se efectúa a título estrictamente gratuito, motivado de manera directa en la condición de accionista que ostenta EL MUTUANTE y su interés corporativo en el apalancamiento operativo de la compañía, no devengando intereses de ninguna naturaleza para enervar la presunción de intereses prevista en las leyes tributarias.' : `Por tratarse de un préstamo otorgado por la sociedad mercantil a su accionista y para mitigar la presunción de dividendo prevista en el Artículo 72 de la Ley de Impuesto Sobre la Renta (LISLR), la operación devengará una tasa de interés comercial pactada del ${contrato.tasa_interes || 1.5}% mensual, debiendo la empresa facturar y declarar dichos rendimientos como ingresos gravables.`}
-
-QUINTA (DESTINO DE LOS FONDOS Y PLAZO): Los fondos transferidos son destinados expresamente a: "${contrato.destino_fondos}". La restitución total de la misma cantidad y especie de tokens USDT entregados se efectuará en un plazo no mayor a ${contrato.plazo_meses} meses, con fecha límite improrrogable el ${formatFechaLarga(contrato.fecha_vencimiento)}.
-
-SEXTA (JURISDICCIÓN): Para todos los efectos derivados de este contrato, las partes eligen como domicilio especial, único y excluyente la ciudad de ${empresa.ciudad}, a la jurisdicción de cuyos tribunales declaran someterse.
-
-Se otorgan dos (02) ejemplares de un mismo tenor y efecto en la ciudad de ${empresa.ciudad}, el ${formatFechaLarga(contrato.fecha_inicio)}.`;
-    }
-
-    // Traditional or Foreign Currency contract
-    return `CONTRATO DE MUTUO (PRÉSTAMO DE DINERO)
-
-Nosotros, ${empresa.razon_social}, sociedad mercantil con domicilio en ${empresa.ciudad}, Estado ${empresa.estado}, constituida e inscrita por ante el ${empresa.registro_mercantil}, bajo el Nro. de R.I.F. ${empresa.rif_empresa}, debidamente representada en este acto por su ${empresa.cargo_representante}, ciudadano(a) ${empresa.representante_legal}, titular de la Cédula de Identidad Nro. ${empresa.cedula_representante}, en lo sucesivo y a todos los efectos legales denominada "${isSocioAEmpresa ? 'LA MUTUARIA' : 'LA MUTUANTE'}", por una parte; y por la otra, el ciudadano(a) ${accionista.nombre_accionista}, de nacionalidad venezolana, mayor de edad, titular de la Cédula de Identidad Nro. ${accionista.cedula_accionista} y del R.I.F. Nro. ${accionista.rif_accionista}, en su calidad de accionista titular del ${accionista.porcentaje_acciones}% de las acciones de la precitada sociedad mercantil, quien en lo sucesivo se denominará "${isSocioAEmpresa ? 'EL MUTUANTE' : 'EL MUTUARIO'}", hemos convenido en celebrar el presente CONTRATO DE MUTUO, sujeto a las disposiciones del Código Civil de Venezuela, el Código de Comercio y a las siguientes estipulaciones:
-
-PRIMERA (OBJETO Y MONTO): ${isSocioAEmpresa ? 'EL MUTUANTE' : 'LA MUTUANTE'} entrega en calidad de mutuo (préstamo de consumo) a ${isSocioAEmpresa ? 'LA MUTUARIA' : 'EL MUTUARIO'}, la cantidad de: ${isVES ? `${numeroALetras(contrato.monto_original)} BOLÍVARES (${formatVES(contrato.monto_original)})` : `${numeroALetras(contrato.monto_original)} DÓLARES DE LOS ESTADOS UNIDOS DE AMÉRICA (${formatUSD(contrato.monto_original)})`}.
-
-SEGUNDA (ENTREGA Y SOPORTE PROBATORIO ANTE EL SENIAT):
-${isEfectivo ? `Las partes hacen constar de manera fehaciente que la entrega de los fondos se realizó físicamente en billetes de curso legal en las oficinas de la empresa, expidiéndose de forma simultánea el RECIBO DE INGRESO A CAJA PRINCIPAL Nro. ${contrato.soporte.recibo_caja_correlativo || 'REC-001'} en fecha ${formatFechaLarga(contrato.soporte.fecha_transaccion)}, el cual se anexa y forma parte indisoluble de la contabilidad mercantil de la compañía.` : `La entrega de los fondos se ejecutó mediante transferencia bancaria electrónica originada desde la cuenta Nro. ${contrato.soporte.numero_cuenta_origen || 'CUENTA-ORIGEN'} en el ${contrato.soporte.banco_origen || 'BANCO-ORIGEN'}, con destino a la cuenta Nro. ${contrato.soporte.numero_cuenta_destino || 'CUENTA-DESTINO'} en el ${contrato.soporte.banco_destino || 'BANCO-DESTINO'}, identificada bajo el Número de Referencia Bancaria ${contrato.soporte.referencia_bancaria || 'REF-BANCARIA'} en fecha ${formatFechaLarga(contrato.soporte.fecha_transaccion)}. El comprobante bancario se anexa como Anexo A.`}
-
-TERCERA (${isSocioAEmpresa ? 'GRATUIDAD Y AUSENCIA DE INTERESES' : 'INTERESES COMERCIALES POR REGULACIÓN TRIBUTARIA'}):
-${isSocioAEmpresa ? 'Las partes declaran formalmente que el presente mutuo se concede a título estrictamente gratuito, no devengando intereses de ninguna naturaleza en consideración al carácter de socio del MUTUANTE y su legítimo interés en el mantenimiento de la operatividad y liquidez de la empresa, descartándose cualquier rendimiento gravable u omisión de ingresos.' : `En cumplimiento del Artículo 72 de la Ley de Impuesto Sobre la Renta (LISLR) para descartar la presunción de dividendo en préstamos concedidos a accionistas, se fija un interés comercial del ${contrato.tasa_interes || 1.5}% mensual sobre el saldo deudor, el cual será debidamente facturado y retenido conforme a las leyes fiscales vigentes.`}
-
-CUARTA (DESTINO Y MOTIVO CORPORATIVO): Los fondos recibidos serán aplicados de manera estricta y exclusiva para: "${contrato.destino_fondos}". ${contrato.motivo_comercial ? `Asimismo, se deja constancia de la justificación corporativa requerida por la administración tributaria: ${contrato.motivo_comercial}.` : ''}
-
-QUINTA (CLÁUSULA DE INDEXACIÓN CAMBIARIA - TASA OFICIAL BCV): ${isVES ? `A los fines de preservar el valor real del monto entregado y prevenir los efectos de la devaluación monetaria, las partes convienen en fijar como unidad de referencia el Dólar de los Estados Unidos de América. El monto recibido en Bolívares equivale a la suma de ${formatUSD(contrato.monto_indexado_usd)} calculada a la tasa oficial de Bs. ${contrato.tasa_bcv_fecha.toFixed(2)} por dólar emitida por el Banco Central de Venezuela (BCV) en la fecha del desembolso. Al momento de la restitución, LA MUTUARIA pagará la cantidad de Bolívares que resulte de multiplicar el monto indexado por la tasa oficial BCV vigente para el estricto día de la liquidación.` : `El pago de la obligación se efectuará en la misma divisa o en su equivalente en Bolívares liquidado a la tasa oficial del Banco Central de Venezuela (BCV) vigente para el día efectivo del pago.`}
-
-SEXTA (PLAZO Y RESTITUCIÓN): El plazo fijado para la cancelación total de la obligación es de ${contrato.plazo_meses} meses, estableciéndose como fecha límite de vencimiento el ${formatFechaLarga(contrato.fecha_vencimiento)}.
-
-SÉPTIMA (DOMICILIO ESPECIAL): Para todas las controversias o derivaciones legales del presente contrato, las partes fijan como domicilio especial y excluyente la ciudad de ${empresa.ciudad}, Estado ${empresa.estado}.
-
-Se firman dos (02) ejemplares de un mismo tenor y validez, en ${empresa.ciudad}, el ${formatFechaLarga(contrato.fecha_inicio)}.`;
+    const { body } = generateContractText(contrato, empresa, accionista);
+    return body;
   };
 
   const renderReciboCaja = () => {
     if (!contrato || !accionista) return '';
+    const isDirectivo = 
+      accionista.es_accionista === false || 
+      accionista.porcentaje_acciones === 0 || 
+      accionista.tipo_vinculo === 'director' || 
+      accionista.tipo_vinculo === 'gerente';
+
+    const condicionPersona = isDirectivo
+      ? `${accionista.cargo_o_condicion || 'Director / Gerente de Confianza'}${accionista.departamento ? ` (${accionista.departamento})` : ''} - Personal de Confianza de la Sociedad.`
+      : `Accionista / Socio Titular del ${accionista.porcentaje_acciones}% del Capital Social.`;
+
+    const etiquetaFirma = isDirectivo
+      ? `${accionista.cargo_o_condicion || 'Director / Gerente'} (Mutuario/Mutuante)`
+      : 'Accionista Mutuante';
+
     return `================================================================================
 RECIBO DE INGRESO A CAJA PRINCIPAL (DIVISAS EN EFECTIVO)
 Control Interno Contable Nro: ${contrato.soporte.recibo_caja_correlativo || 'REC-2026-0042'}
@@ -166,7 +247,7 @@ EQUIVALENCIA CONTABLE EN BOLÍVARES: ${formatVES(contrato.monto_indexado_ves)}
 
 RECIBÍ del ciudadano(a): ${accionista.nombre_accionista}
 Cédula de Identidad: ${accionista.cedula_accionista} | R.I.F.: ${accionista.rif_accionista}
-Condición en la entidad: Accionista / Socio Titular del ${accionista.porcentaje_acciones}% del Capital Social.
+Condición en la entidad: ${condicionPersona}
 
 LA CANTIDAD DE:
 ${numeroALetras(contrato.monto_original)} DÓLARES DE LOS ESTADOS UNIDOS DE AMÉRICA (${formatUSD(contrato.monto_original)}) en billetes físicos de curso legal.
@@ -190,29 +271,16 @@ ENTREGADO POR:                                RECIBIDO EN CAJA POR:
 _________________________________             _________________________________
 ${accionista.nombre_accionista}               ${empresa.representante_legal}
 C.I. V-${accionista.cedula_accionista}        C.I. V-${empresa.cedula_representante}
-Accionista Mutuante                           ${empresa.cargo_representante}
+${etiquetaFirma}                              ${empresa.cargo_representante}
                                               (SELLO HÚMEDO DE LA EMPRESA)`;
   };
 
   const renderActaMacro = () => {
-    return `ACTA DE ASAMBLEA GENERAL EXTRAORDINARIA DE ACCIONISTAS DE LA SOCIEDAD MERCANTIL ${empresa.razon_social}
+    return generateActaAsambleaText(actaMacro, empresa, accionistas, contrato, accionista);
+  };
 
-Hoy, ${actaMacro ? formatFechaLarga(actaMacro.fecha_asamblea) : '15 de enero de 2026'}, siendo las ${actaMacro?.hora_inicio || '10:00 AM'}, en la sede social de la compañía ${empresa.razon_social}, debidamente inscrita por ante el ${empresa.registro_mercantil}, con R.I.F. Nro. ${empresa.rif_empresa}, domiciliada en ${empresa.ciudad}, Estado ${empresa.estado}; se encuentran presentes la totalidad de los accionistas que representan el cien por ciento (100%) del capital social suscrito y pagado de la compañía. Preside la reunión el Director Presidente ciudadano ${empresa.representante_legal}. El Presidente constata la presencia del quórum legal estatutario y declara válidamente constituida la Asamblea General Extraordinaria de Accionistas, prescindiéndose de la convocatoria por prensa en virtud de hallarse presente el cien por ciento del capital social de la empresa.
-
-Acto seguido, el Presidente somete a consideración de los presentes el único punto del ORDEN DEL DÍA:
-"Autorización de líneas de financiamiento operativo y préstamos de mutuo recíproco entre los accionistas y la sociedad mercantil para el ejercicio económico, fijación de límites, condiciones de gratuidad e indexación oficial".
-
-Tomando el uso de la palabra, el Presidente expone a la asamblea que en el marco de la realidad financiera nacional y la necesidad de sostener el capital de trabajo de la sociedad ante fluctuaciones comerciales, resulta imperativo establecer un marco regulatorio de gobierno corporativo que respalde ante las autoridades fiscales (SENIAT) y los principios contables VEN-NIF todas las entradas y salidas de fondos bajo las cuentas "Cuentas por Pagar Accionistas" y "Cuentas por Cobrar Accionistas".
-
-Luego de amplia deliberación, los accionistas APROBARON POR UNANIMIDAD las siguientes resoluciones:
-
-PRIMERA: AUTORIZACIÓN DE LÍNEAS DE APORTE (CUENTAS POR PAGAR ACCIONISTAS): Se autoriza a la Junta Directiva a recibir préstamos (mutuos) de los accionistas hasta por la cantidad máxima acumulada de CIENTO CINCUENTA MIL DÓLARES DE LOS ESTADOS UNIDOS DE AMÉRICA ($150,000.00 USD) o su equivalente en Bolívares o Criptoactivos (USDT). Dichos préstamos serán a título estrictamente gratuito, motivados en el vínculo societario, y podrán incorporar cláusulas de indexación basadas en la tasa de cambio oficial publicada por el Banco Central de Venezuela (BCV), o la entrega de bienes muebles digitales fungibles (USDT).
-
-SEGUNDA: CONDICIONES PARA PRÉSTAMOS A ACCIONISTAS (CUENTAS POR COBRAR ACCIONISTAS): Se autoriza de forma estricta y excepcional el otorgamiento de préstamos de la sociedad a sus accionistas hasta por un límite máximo de VEINTICINCO MIL DÓLARES ($25,000.00 USD), siempre que: (a) Exista una justificación comercial documentada en beneficio directo de la empresa; (b) Se pacte obligatoriamente una tasa de interés comercial para desvirtuar la figura de "Dividendo Presunto" prevista en el Artículo 72 de la Ley de ISLR; y (c) El plazo de restitución no supere los ciento ochenta (180) días continuos.
-
-TERCERA: ASENTAMIENTO Y REGISTRO: Todo movimiento de fondos derivado de la presente autorización deberá estar respaldado obligatoriamente por un Contrato de Mutuo formal, vinculado a comprobantes bancarios, recibos de caja principal o Hash de transacciones Blockchain (TXID), debiendo asentarse la presente acta en el Libro de Actas de Asambleas de Accionistas debidamente sellado por el Registro Mercantil.
-
-No habiendo más asuntos que tratar, se levanta la sesión y se procede a la firma inmediata del acta por todos los presentes en señal de conformidad.`;
+  const renderReciboIntereses = () => {
+    return generateReciboInteresesText(contrato, empresa, accionista, 'Febrero 2026', tasaBCV);
   };
 
   const renderActaCapitalizacion = () => {
@@ -266,14 +334,23 @@ Lic. Gladys Elena Peña Morales
 Contador Público Colegiado - CPC Nro. 48.912`;
   };
 
+  const renderLineaCredito = () => {
+    const { body } = generateLineaCreditoRotativaText(contrato, empresa, socioFirmante);
+    return body;
+  };
+
   const getActiveText = () => {
     switch (activeTab) {
+      case 'linea_credito':
+        return renderLineaCredito();
       case 'contrato':
         return renderContratoText();
       case 'recibo_caja':
         return renderReciboCaja();
       case 'acta_macro':
         return renderActaMacro();
+      case 'recibo_intereses':
+        return renderReciboIntereses();
       case 'acta_capitalizacion':
         return renderActaCapitalizacion();
       case 'informe_comisario':
@@ -328,6 +405,26 @@ Contador Público Colegiado - CPC Nro. 48.912`;
             </button>
 
             <button
+              onClick={handleDownloadExcel}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+              title="Descargar Acta de Asamblea y Resumen en formato Excel (.xls)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Descargar Excel</span>
+            </button>
+
+            {contrato && onOpenMonthlyCalc && (
+              <button
+                onClick={() => onOpenMonthlyCalc(contrato)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+                title="Calcular memoria de intereses y emitir Nota de Débito fiscal"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                <span>Memoria & Nota Débito</span>
+              </button>
+            )}
+
+            <button
               onClick={() => handleCopy(getActiveText())}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-300 transition-colors cursor-pointer shadow-2xs"
             >
@@ -364,6 +461,34 @@ Contador Público Colegiado - CPC Nro. 48.912`;
             Contrato de Mutuo
           </button>
 
+          <button
+            onClick={() => setActiveTab('linea_credito')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'linea_credito' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-medium'
+            }`}
+            title="Contrato Marco de Apertura de Línea Rotativa (1 sola Notaría al año para agrupar múltiples transferencias)"
+          >
+            <span>Línea Crédito Rotativa (1 Notaría/Año)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('acta_macro')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === 'acta_macro' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-medium'
+            }`}
+          >
+            Acta de Asamblea Extraordinaria
+          </button>
+
+          <button
+            onClick={() => setActiveTab('recibo_intereses')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === 'recibo_intereses' ? 'bg-amber-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-medium'
+            }`}
+          >
+            Recibo Mensual Intereses (SENIAT)
+          </button>
+
           {contrato?.tipo_activo === 'USD_EFECTIVO' && (
             <button
               onClick={() => setActiveTab('recibo_caja')}
@@ -374,15 +499,6 @@ Contador Público Colegiado - CPC Nro. 48.912`;
               Recibo de Caja Principal
             </button>
           )}
-
-          <button
-            onClick={() => setActiveTab('acta_macro')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-              activeTab === 'acta_macro' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-medium'
-            }`}
-          >
-            Acta de Asamblea Macro
-          </button>
 
           <button
             onClick={() => setActiveTab('acta_capitalizacion')}
@@ -427,29 +543,78 @@ Contador Público Colegiado - CPC Nro. 48.912`;
               </div>
             </div>
 
+            {/* Informational Banner for Línea de Crédito Rotativa */}
+            {activeTab === 'linea_credito' && (
+              <div className="mb-6 p-4 rounded-xl bg-blue-50/70 border border-blue-200 text-slate-800 font-sans text-xs print:hidden">
+                <div className="flex items-center gap-2 font-bold text-blue-900 mb-1">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span>Estrategia de Blindaje: 1 Sola Notaría Anual para Múltiples Retiros Mensuales</span>
+                </div>
+                <p className="text-slate-700 leading-relaxed">
+                  Con este <strong>Contrato Marco de Línea de Crédito Rotativa</strong> autenticado <strong>una sola vez al año</strong>, se eliminan los costos y trámites de notariar 20 contratos individuales al mes. Las transferencias mensuales quedan soportadas por este contrato, la <strong>Memoria de Cálculo mensual</strong> (papel de trabajo) y una única <strong>Nota de Débito Fiscal mensual No Sujeta al IVA</strong> (Art. 73 LISLR y Art. 16 Num 3 LIVA).
+                </p>
+              </div>
+            )}
+
             {/* Document Body */}
             <div className="whitespace-pre-wrap font-serif text-[13px] leading-relaxed text-slate-900">
               {getActiveText()}
             </div>
 
-            {/* Signature Blocks */}
-            <div className="mt-12 pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
-              <div>
-                <div className="w-48 mx-auto border-b border-slate-400 mb-2"></div>
-                <div className="font-bold text-slate-900">{empresa.representante_legal}</div>
-                <div className="text-slate-600">C.I. V-{empresa.cedula_representante}</div>
-                <div className="text-[11px] text-slate-500">{empresa.cargo_representante}</div>
-                <div className="text-[10px] text-slate-500 uppercase">{empresa.razon_social}</div>
-              </div>
+            {/* Signature Blocks according to Document Type */}
+            {activeTab === 'acta_macro' ? (
+              <div className="mt-12 pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
+                <div>
+                  <div className="w-48 mx-auto border-b border-slate-400 mb-2"></div>
+                  <div className="font-bold text-slate-900">{socio1.nombre_accionista}</div>
+                  <div className="text-slate-600">C.I. V-{socio1.cedula_accionista}</div>
+                  <div className="text-[11px] text-slate-500 font-semibold">Accionista ({socio1.porcentaje_acciones}%)</div>
+                </div>
 
-              <div>
-                <div className="w-48 mx-auto border-b border-slate-400 mb-2"></div>
-                <div className="font-bold text-slate-900">{accionista?.nombre_accionista || 'Accionista'}</div>
-                <div className="text-slate-600">C.I. V-{accionista?.cedula_accionista || ''}</div>
-                <div className="text-[11px] text-slate-500">Accionista / Mutuante</div>
-                <div className="text-[10px] text-slate-500">R.I.F. {accionista?.rif_accionista || ''}</div>
+                <div>
+                  <div className="w-48 mx-auto border-b border-slate-400 mb-2"></div>
+                  <div className="font-bold text-slate-900">{socio2.nombre_accionista}</div>
+                  <div className="text-slate-600">C.I. V-{socio2.cedula_accionista}</div>
+                  <div className="text-[11px] text-slate-500 font-semibold">Accionista ({socio2.porcentaje_acciones}%)</div>
+                </div>
               </div>
-            </div>
+            ) : activeTab === 'recibo_intereses' ? (
+              <div className="mt-12 pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
+                <div>
+                  <div className="w-48 mx-auto border-b border-slate-400 mb-2"></div>
+                  <div className="font-bold text-slate-900">{empresa.representante_legal}</div>
+                  <div className="text-slate-600">C.I. V-{empresa.cedula_representante}</div>
+                  <div className="text-[11px] text-slate-500">{empresa.cargo_representante}</div>
+                  <div className="text-[10px] text-slate-500 uppercase">{empresa.razon_social} (Sello Húmedo)</div>
+                </div>
+
+                <div>
+                  <div className="w-48 mx-auto border-b border-slate-400 mb-2"></div>
+                  <div className="font-bold text-slate-900">{accionista?.nombre_accionista || 'Accionista Beneficiario'}</div>
+                  <div className="text-slate-600">C.I. V-{accionista?.cedula_accionista || ''}</div>
+                  <div className="text-[11px] text-slate-500">Mutuario / Deudor</div>
+                  <div className="text-[10px] text-slate-500">R.I.F. {accionista?.rif_accionista || ''}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-12 pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
+                <div>
+                  <div className="w-48 mx-auto border-b border-slate-400 mb-2"></div>
+                  <div className="font-bold text-slate-900">{empresa.representante_legal}</div>
+                  <div className="text-slate-600">C.I. V-{empresa.cedula_representante}</div>
+                  <div className="text-[11px] text-slate-500">{empresa.cargo_representante}</div>
+                  <div className="text-[10px] text-slate-500 uppercase">{empresa.razon_social}</div>
+                </div>
+
+                <div>
+                  <div className="w-48 mx-auto border-b border-slate-400 mb-2"></div>
+                  <div className="font-bold text-slate-900">{accionista?.nombre_accionista || 'Accionista'}</div>
+                  <div className="text-slate-600">C.I. V-{accionista?.cedula_accionista || ''}</div>
+                  <div className="text-[11px] text-slate-500">Accionista / Mutuario</div>
+                  <div className="text-[10px] text-slate-500">R.I.F. {accionista?.rif_accionista || ''}</div>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>

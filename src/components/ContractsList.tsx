@@ -15,7 +15,9 @@ import {
   Receipt,
   Download,
   FileDown,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Calculator,
+  Scale
 } from 'lucide-react';
 import { downloadContractPDF, downloadContractWord } from '../utils/documentExport';
 
@@ -30,6 +32,8 @@ interface ContractsListProps {
   onOpenCapitalization: (contrato: ContratoMutuo) => void;
   onOpenValidator: (contratoId: string) => void;
   onOpenFiscalReport?: () => void;
+  onOpenMonthlyCalc?: (contrato: ContratoMutuo) => void;
+  onOpenLineaCredito?: () => void;
 }
 
 export const ContractsList: React.FC<ContractsListProps> = ({
@@ -43,6 +47,8 @@ export const ContractsList: React.FC<ContractsListProps> = ({
   onOpenCapitalization,
   onOpenValidator,
   onOpenFiscalReport,
+  onOpenMonthlyCalc,
+  onOpenLineaCredito,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterFlujo, setFilterFlujo] = useState<'todos' | 'pagar' | 'cobrar'>('todos');
@@ -121,14 +127,42 @@ export const ContractsList: React.FC<ContractsListProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenMonthlyCalc && empresaContratos.length > 0 && (
+            <button
+              onClick={() => {
+                const conInteres = empresaContratos.find(c => c.tipo_flujo === 'empresa_a_socio' || c.aplica_interes) || empresaContratos[0];
+                onOpenMonthlyCalc(conInteres);
+              }}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-2xs"
+              title="Calcular memoria de intereses mensuales y emitir Nota de Débito Fiscal bajo Art. 72 LISLR"
+            >
+              <Calculator className="w-4 h-4 text-amber-700" />
+              <span>Memoria & Nota Débito</span>
+            </button>
+          )}
+
           {onOpenFiscalReport && (
             <button
               onClick={onOpenFiscalReport}
               className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-2xs"
-              title="Exportar resumen consolidado de cuentas por pagar y cobrar en CSV para el SENIAT"
+              title="Exportar resumen consolidado de cuentas por pagar y cobrar en Excel para el SENIAT"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>Cierre Fiscal (CSV)</span>
+              <span>Cierre Fiscal (Excel)</span>
+            </button>
+          )}
+
+          {onOpenLineaCredito && (
+            <button
+              onClick={onOpenLineaCredito}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 hover:text-blue-800 text-xs font-medium rounded-xl transition-colors cursor-pointer shadow-2xs"
+              title="Abrir Contrato Marco de Línea de Crédito Rotativa (1 Notaría Anual para agrupar múltiples transferencias)"
+            >
+              <Scale className="w-3.5 h-3.5 text-blue-600" />
+              <span>Contrato Marco de Línea</span>
+              <span className="bg-blue-200/70 text-blue-800 text-[10px] font-semibold px-1.5 py-0.2 rounded">
+                1 Notaría/Año
+              </span>
             </button>
           )}
 
@@ -238,15 +272,19 @@ export const ContractsList: React.FC<ContractsListProps> = ({
                       </td>
 
                       <td className="py-3.5 px-4 text-xs">
-                        {isSocioAEmpresa ? (
-                          <span className="text-emerald-800 text-[11px] font-semibold block">
+                        {!contrato.aplica_interes ? (
+                          <span className="text-blue-800 text-[11px] font-semibold block">
                             Gratuito (Sin Interés)
-                            <span className="text-[10px] text-slate-500 font-normal block">Frena intereses presuntos</span>
+                            <span className="text-[10px] text-slate-500 font-normal block">Art. 1.745 CC • Tasa 0%</span>
                           </span>
                         ) : (
-                          <span className="text-amber-800 text-[11px] font-semibold block">
-                            Tasa Comercial: {contrato.tasa_interes}%/mes
-                            <span className="text-[10px] text-slate-500 font-normal block">Art. 72 LISLR cumplido</span>
+                          <span className="text-emerald-800 text-[11px] font-semibold block">
+                            {contrato.modalidad_tasa === 'indexada_12_usd' || contrato.modalidad_tasa === 'indexada_usd_12' 
+                              ? 'Indexado 12% Anual USD' 
+                              : `Tasa: ${contrato.tasa_interes}%/mes`}
+                            <span className="text-[10px] text-slate-500 font-normal block font-mono">
+                              Retención 5% • No Sujeto IVA
+                            </span>
                           </span>
                         )}
                       </td>
@@ -302,6 +340,20 @@ export const ContractsList: React.FC<ContractsListProps> = ({
                           >
                             <BookOpen className="w-4 h-4 text-emerald-600" />
                           </button>
+
+                          {onOpenMonthlyCalc && (
+                            <button
+                              onClick={() => onOpenMonthlyCalc(contrato)}
+                              className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                                !isSocioAEmpresa || contrato.aplica_interes
+                                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 shadow-2xs'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                              }`}
+                              title="Memoria de Cálculo de Intereses & Nota de Débito Fiscal"
+                            >
+                              <Calculator className="w-4 h-4 text-amber-700" />
+                            </button>
+                          )}
 
                           <button
                             onClick={() => onOpenValidator(contrato.id)}

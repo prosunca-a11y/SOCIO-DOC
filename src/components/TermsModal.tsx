@@ -48,7 +48,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
           <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex gap-2.5 items-start">
             <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
             <span>
-              <strong>Aviso Legal Importante:</strong> El uso de <strong>socio-doc</strong> automatiza la emisión probatoria pero requiere que la información suministrada concuerde fielmente con los movimientos bancarios reales de la empresa y los libros mercantiles físicos sellados.
+              <strong>Aviso Legal Importante:</strong> El uso de <strong>SOCIO-DOC</strong> automatiza la emisión probatoria pero requiere que la información suministrada concuerde fielmente con los movimientos bancarios reales de la empresa y los libros mercantiles físicos sellados.
             </span>
           </div>
 
@@ -57,7 +57,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
               CLÁUSULA DE EXENCIÓN DE RESPONSABILIDAD TRIBUTARIA Y LEGAL
             </p>
             <p>
-              <strong>"El Usuario"</strong> (término que agrupa a contadores, administradores, empresas y personas naturales que utilicen la plataforma) reconoce y acepta formalmente que <strong>socio-doc</strong> es única y exclusivamente una herramienta tecnológica de automatización documental y asistencia administrativa.
+              <strong>"El Usuario"</strong> (término que agrupa a contadores, administradores, empresas y personas naturales que utilicen la plataforma) reconoce y acepta formalmente que <strong>SOCIO-DOC</strong> es única y exclusivamente una herramienta tecnológica de automatización documental y asistencia administrativa.
             </p>
             <p>En consecuencia, las partes acuerdan los siguientes términos de exclusión de responsabilidad:</p>
 
@@ -67,7 +67,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
               </div>
 
               <div>
-                <strong className="text-slate-900">2. Negligencia u Omisión del Usuario:</strong> socio-doc queda totalmente exenta de cualquier responsabilidad legal, civil, penal o mercantil si la Administración Tributaria Nacional (SENIAT) o cualquier otro organismo regulador rechaza, impugna o descalifica los contratos generados a través de la aplicación debido a:
+                <strong className="text-slate-900">2. Negligencia u Omisión del Usuario:</strong> SOCIO-DOC queda totalmente exenta de cualquier responsabilidad legal, civil, penal o mercantil si la Administración Tributaria Nacional (SENIAT) o cualquier otro organismo regulador rechaza, impugna o descalifica los contratos generados a través de la aplicación debido a:
                 <ul className="list-disc pl-5 mt-1 space-y-1 text-slate-600">
                   <li>Introducción de datos falsos, erróneos, inexactos o simulados por parte del Usuario (montos, fechas, identidades o números de referencia bancaria).</li>
                   <li>Omisión en la ejecución de los pasos recomendados por el sistema, tales como la obtención de Fecha Cierta (notarización, sellado de tiempo digital o firma electrónica certificada).</li>
@@ -77,11 +77,11 @@ export const TermsModal: React.FC<TermsModalProps> = ({
               </div>
 
               <div>
-                <strong className="text-slate-900">3. Inexistencia de Garantía de Resultado:</strong> socio-doc no garantiza que la sola presentación de los documentos generados por la plataforma impida el levantamiento de un acta de reparo, imposición de multas o sanciones por parte del SENIAT durante un proceso de fiscalización, toda vez que los fiscales actúan bajo la sana crítica y la valoración integral de la contabilidad material del contribuyente.
+                <strong className="text-slate-900">3. Inexistencia de Garantía de Resultado:</strong> SOCIO-DOC no garantiza que la sola presentación de los documentos generados por la plataforma impida el levantamiento de un acta de reparo, imposición de multas o sanciones por parte del SENIAT durante un proceso de fiscalización, toda vez que los fiscales actúan bajo la sana crítica y la valoración integral de la contabilidad material del contribuyente.
               </div>
 
               <div>
-                <strong className="text-slate-900">4. Indemnidad:</strong> El Usuario se obliga a mantener indemne a socio-doc, sus desarrolladores, directivos y filiales frente a cualquier reclamación, sanción económica, demanda o pérdida financiera derivada del uso incorrecto, fraudulento o negligente de los documentos emitidos por el sistema.
+                <strong className="text-slate-900">4. Indemnidad:</strong> El Usuario se obliga a mantener indemne a SOCIO-DOC, sus desarrolladores, directivos y filiales frente a cualquier reclamación, sanción económica, demanda o pérdida financiera derivada del uso incorrecto, fraudulento o negligente de los documentos emitidos por el sistema.
               </div>
             </div>
           </div>

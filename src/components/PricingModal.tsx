@@ -21,7 +21,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 leading-tight">
-                Planes de Suscripción SaaS: socio-doc
+                Planes de Suscripción SaaS: SOCIO-DOC
               </h2>
               <p className="text-xs text-slate-500">
                 Diseñado para Contadores Públicos Independientes, Firmas de Asesoría y Empresas en Venezuela

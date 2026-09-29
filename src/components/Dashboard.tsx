@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Empresa, Accionista, ActaAsamblea, ContratoMutuo, TransaccionBancaria } from '../types';
 import { formatVES, formatUSD, formatFechaLarga } from '../utils/formatters';
 import { RiskSemaphore } from './RiskSemaphore';
+import { FirstStepsGuide } from './FirstStepsGuide';
 import { 
   FileText, 
   Landmark, 
@@ -35,6 +36,7 @@ interface DashboardProps {
   onNavigateTab: (tab: string) => void;
   onOpenCompanyManager?: () => void;
   onOpenFiscalReport?: () => void;
+  onOpenLineaCredito?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -51,7 +53,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNavigateTab,
   onOpenCompanyManager,
   onOpenFiscalReport,
+  onOpenLineaCredito,
 }) => {
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const empresaContratos = contratos.filter(c => c.empresa_id === empresa.id);
   const empresaActas = actas.filter(a => a.empresa_id === empresa.id);
   const empresaTx = transacciones.filter(t => t.empresa_id === empresa.id);
@@ -109,10 +113,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <button
                 onClick={onOpenFiscalReport}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-semibold text-xs rounded-xl transition-all shadow-2xs cursor-pointer"
-                title="Exportar resumen consolidado en CSV para el Cierre Fiscal SENIAT"
+                title="Exportar resumen consolidado en Excel para el Cierre Fiscal SENIAT"
               >
                 <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Reporte Cierre Fiscal (CSV)</span>
+                <span>Reporte Cierre Fiscal (Excel)</span>
+              </button>
+            )}
+
+            {onOpenLineaCredito && (
+              <button
+                onClick={onOpenLineaCredito}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 hover:text-blue-800 font-medium text-xs rounded-xl transition-colors cursor-pointer shadow-2xs"
+                title="Abrir Contrato Marco de Línea de Crédito Rotativa (1 Notaría Anual para agrupar múltiples transferencias)"
+              >
+                <Scale className="w-3.5 h-3.5 text-blue-600" />
+                <span>Contrato Marco de Línea</span>
+                <span className="bg-blue-200/70 text-blue-800 text-[10px] font-semibold px-1.5 py-0.2 rounded">
+                  1 Notaría/Año
+                </span>
               </button>
             )}
 
@@ -126,6 +144,162 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Strategic Note for Línea de Crédito Rotativa */}
+      {onOpenLineaCredito && (
+        <div className="bg-blue-50/50 border border-blue-200/80 rounded-xl p-4 sm:p-4.5 shadow-2xs relative text-slate-800">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0 mt-0.5">
+                <Scale className="w-4.5 h-4.5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-2 py-0.2 rounded">
+                    Blindaje Notarial
+                  </span>
+                  <span className="text-xs font-semibold text-slate-700">
+                    1 Notaría Anual para Múltiples Transferencias al Mes
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+                  Ampara todos los retiros mensuales de los socios con un solo Contrato Marco autenticado al año (Art. 503 C.Com y Art. 73 LISLR), liquidado mediante Memoria de Cálculo y Nota de Débito mensual No Sujeta a IVA.
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 w-full md:w-auto">
+              <button
+                onClick={onOpenLineaCredito}
+                className="w-full md:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-colors shadow-2xs cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-white" />
+                <span>Ver Contrato Marco</span>
+                <ArrowRight className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Banner Especial de 29 Recibos de Cupo para Agrícola Oni & Manuel Alejandro Becerra Luis */}
+      {(empresa.id === 'emp-oni' || empresa.razon_social.toUpperCase().includes('AGRICOLA ONI')) && (
+        <div className="space-y-3">
+          <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 border border-blue-800 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow-sm">
+                  <Receipt className="w-5 h-5 text-slate-950" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full">
+                      29 Recibos de Cupo Listos
+                    </span>
+                    <span className="text-xs font-mono text-blue-200">
+                      Banesco Cta. 5128 • Salidas: Bs. 498.400.605,30 ($753.801,37 USD)
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white">
+                    Expediente de Desembolsos de Línea de Crédito: Sr. Manuel Alejandro Becerra Luis
+                  </h3>
+                  <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                    Las 29 transferencias bancarias cuentan con su comprobante oficial de cupo, tasa de cambio oficial BCV del día de cada operación, desglose acumulado y remanente disponible.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('recibos_cupo')}
+                  className="w-full md:w-auto px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Ver los 29 Recibos de Cupo</span>
+                  <ArrowRight className="w-4 h-4 text-slate-950" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Banner de los 18 Recibos de Pagos Recibidos (Amortizaciones de Intereses y Capital) */}
+          <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 border border-emerald-600/60 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-400 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow-sm">
+                  <CheckCircle2 className="w-5 h-5 text-slate-950" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-400 text-slate-950 px-2.5 py-0.5 rounded-full">
+                      18 Recibos de Pagos Recibidos Listos
+                    </span>
+                    <span className="text-xs font-mono text-emerald-200">
+                      Banesco Cta. 5128 • Total Pagado: Bs. 186.376.000,00
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white">
+                    Expediente de Amortización: Intereses (Bs. 45.095.346,46) y Capital (Bs. 141.280.653,54)
+                  </h3>
+                  <p className="text-xs text-emerald-100/90 max-w-2xl leading-relaxed">
+                    Aplicación legal de pagos (Art. 529 Cód. Comercio): cobro de intereses con 5% de Retención ISLR y abono neto a capital. Saldo deudor reducido a Bs. 357.119.951,76 y cupo disponible reconstituido a Bs. 242.880.048,24.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('recibos_pagos')}
+                  className="w-full md:w-auto px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Ver los 18 Recibos de Pago</span>
+                  <ArrowRight className="w-4 h-4 text-slate-950" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Banner Maestro: Cruce Periódico de 47 Movimientos & Descarga Excel */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 border border-amber-500/50 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow-md">
+                  <FileSpreadsheet className="w-5 h-5 text-slate-950" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full">
+                      Cruce Periódico Integral (47 Movimientos)
+                    </span>
+                    <span className="text-xs font-mono text-amber-200">
+                      Saldo Vivo: Bs. 357.119.951,76 • Cupo Disp.: Bs. 242.880.048,24
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white">
+                    Libro Maestro de Control: 29 Cupos Desembolsados vs. 18 Amortizaciones de Intereses y Capital
+                  </h3>
+                  <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                    Estado de cuenta cronológico completo con dictamen pericial contable venezolano, asientos de diario VEN-NIF PYME, aplicación del Art. 529 Código de Comercio y exportación a Excel (.xls) en 4 hojas.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('cruce_periodico')}
+                  className="w-full md:w-auto px-4.5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-amber-300"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-slate-950" />
+                  <span>Ver Cruce &amp; Descargar Excel</span>
+                  <ArrowRight className="w-4 h-4 text-slate-950" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -326,7 +500,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               Reporte Consolidado de Cuentas por Pagar y Cobrar Socios ({empresa.razon_social})
             </h3>
             <p className="text-xs text-slate-600 mt-0.5 max-w-2xl">
-              Genera la cédula analítica en formato CSV para conciliar saldos de las cuentas 2.1.03 y 1.1.03, verificar retenciones IGTF 3% y sustentar los préstamos mutuos ante los auditores fiscales.
+              Genera la cédula analítica en formato Excel para conciliar saldos de las cuentas 2.1.03 y 1.1.03, verificar retenciones IGTF 3% y sustentar los préstamos mutuos ante los auditores fiscales.
             </p>
           </div>
         </div>
@@ -337,7 +511,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl transition-all shadow-xs cursor-pointer shrink-0"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Abrir Cédula Fiscal CSV</span>
+            <span>Abrir Cédula Fiscal Excel</span>
           </button>
         )}
       </div>

@@ -20,6 +20,7 @@ import {
   TransaccionBancaria, 
   CapitalizacionAcreencia 
 } from './types';
+import { FirstStepsGuide } from './components/FirstStepsGuide';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { ContractsList } from './components/ContractsList';
@@ -35,6 +36,10 @@ import { PricingModal } from './components/PricingModal';
 import { TermsModal } from './components/TermsModal';
 import { CompanyManagerModal } from './components/CompanyManagerModal';
 import { FiscalClosingReportModal } from './components/FiscalClosingReportModal';
+import { MonthlyCalculationModal } from './components/MonthlyCalculationModal';
+import { RecibosCupoManager } from './components/RecibosCupoManager';
+import { RecibosPagosManager } from './components/RecibosPagosManager';
+import { CrucePeriodicoManager } from './components/CrucePeriodicoManager';
 
 export default function App() {
   // Main State
@@ -51,6 +56,7 @@ export default function App() {
 
   // Modals state
   const [isContractWizardOpen, setIsContractWizardOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isCompanyManagerOpen, setIsCompanyManagerOpen] = useState(false);
@@ -58,7 +64,9 @@ export default function App() {
 
   // Legal Document Viewer State
   const [legalModalOpen, setLegalModalOpen] = useState(false);
-  const [legalDocType, setLegalDocType] = useState<'contrato' | 'recibo_caja' | 'acta_macro' | 'acta_capitalizacion' | 'informe_comisario'>('contrato');
+  const [legalDocType, setLegalDocType] = useState<
+    'contrato' | 'recibo_caja' | 'acta_macro' | 'acta_capitalizacion' | 'informe_comisario' | 'recibo_intereses' | 'linea_credito'
+  >('contrato');
   const [selectedContratoForLegal, setSelectedContratoForLegal] = useState<ContratoMutuo | undefined>(undefined);
   const [selectedActaForLegal, setSelectedActaForLegal] = useState<ActaAsamblea | undefined>(undefined);
   const [capitalizacionDataForLegal, setCapitalizacionDataForLegal] = useState<CapitalizacionAcreencia | undefined>(undefined);
@@ -70,7 +78,16 @@ export default function App() {
   // Blockchain Validator selected ID
   const [selectedValidatorContratoId, setSelectedValidatorContratoId] = useState<string | undefined>(undefined);
 
+  // Monthly Interest Calculation & Debit Note Modal State
+  const [isMonthlyCalcOpen, setIsMonthlyCalcOpen] = useState(false);
+  const [selectedContratoForMonthlyCalc, setSelectedContratoForMonthlyCalc] = useState<ContratoMutuo | undefined>(undefined);
+
   // Handlers
+  const handleOpenMonthlyCalc = (contrato: ContratoMutuo) => {
+    setSelectedContratoForMonthlyCalc(contrato);
+    setIsMonthlyCalcOpen(true);
+  };
+
   const handleSaveContract = (nuevoContrato: ContratoMutuo) => {
     setContratos(prev => [nuevoContrato, ...prev]);
   };
@@ -91,6 +108,10 @@ export default function App() {
       }
       return a;
     }));
+  };
+
+  const handleImportTransactions = (newTx: TransaccionBancaria[]) => {
+    setTransacciones(prev => [...newTx, ...prev]);
   };
 
   const handleMatchTransaction = (txId: string, contratoId: string) => {
@@ -123,6 +144,20 @@ export default function App() {
     setSelectedContratoForLegal(undefined);
     setCapitalizacionDataForLegal(undefined);
     setLegalDocType('acta_macro');
+    setLegalModalOpen(true);
+  };
+
+  const handleOpenLineaCredito = (contrato?: ContratoMutuo) => {
+    const targetContrato = contrato
+      || contratos.find(c => c.empresa_id === selectedEmpresa.id && c.modalidad_contrato === 'linea_credito_rotativa')
+      || contratos.find(c => c.empresa_id === selectedEmpresa.id && c.tipo_flujo === 'empresa_a_socio')
+      || contratos.find(c => c.empresa_id === selectedEmpresa.id)
+      || contratos[0];
+
+    setSelectedContratoForLegal(targetContrato);
+    setSelectedActaForLegal(undefined);
+    setCapitalizacionDataForLegal(undefined);
+    setLegalDocType('linea_credito');
     setLegalModalOpen(true);
   };
 
@@ -232,10 +267,14 @@ export default function App() {
         onOpenTerms={() => setIsTermsOpen(true)}
         onOpenCompanyManager={() => setIsCompanyManagerOpen(true)}
         onOpenFiscalReport={() => setIsFiscalReportOpen(true)}
+        onOpenLineaCredito={() => handleOpenLineaCredito()}
+        onOpenGuide={() => setIsGuideOpen(true)}
       />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+        
+        {isGuideOpen && <FirstStepsGuide onClose={() => setIsGuideOpen(false)} />}
         
         {activeTab === 'dashboard' && (
           <Dashboard
@@ -252,6 +291,7 @@ export default function App() {
             onNavigateTab={setActiveTab}
             onOpenCompanyManager={() => setIsCompanyManagerOpen(true)}
             onOpenFiscalReport={() => setIsFiscalReportOpen(true)}
+            onOpenLineaCredito={() => handleOpenLineaCredito()}
           />
         )}
 
@@ -279,6 +319,8 @@ export default function App() {
               onOpenCapitalization={handleOpenCapitalization}
               onOpenValidator={handleOpenValidator}
               onOpenFiscalReport={() => setIsFiscalReportOpen(true)}
+              onOpenMonthlyCalc={handleOpenMonthlyCalc}
+              onOpenLineaCredito={() => handleOpenLineaCredito()}
             />
           </div>
         )}
@@ -303,6 +345,45 @@ export default function App() {
             tasaBCV={tasaBCV}
             onMatchTransaction={handleMatchTransaction}
             onCrearContratoDesdeBanco={handleCrearContratoDesdeBanco}
+            onImportTransactions={handleImportTransactions}
+            onOpenLineaCredito={handleOpenLineaCredito}
+            onNavigateToRecibosCupo={() => setActiveTab('recibos_cupo')}
+          />
+        )}
+
+        {activeTab === 'recibos_cupo' && (
+          <RecibosCupoManager
+            empresa={selectedEmpresa}
+            accionistas={accionistas}
+            contratos={contratos}
+            tasaBCV={tasaBCV}
+            onOpenLineaCredito={handleOpenLineaCredito}
+            onNavigateToRecibosPagos={() => setActiveTab('recibos_pagos')}
+            onNavigateToCrucePeriodico={() => setActiveTab('cruce_periodico')}
+          />
+        )}
+
+        {activeTab === 'recibos_pagos' && (
+          <RecibosPagosManager
+            empresa={selectedEmpresa}
+            accionistas={accionistas}
+            contratos={contratos}
+            tasaBCV={tasaBCV}
+            onOpenLineaCredito={handleOpenLineaCredito}
+            onNavigateToRecibosCupo={() => setActiveTab('recibos_cupo')}
+            onNavigateToCrucePeriodico={() => setActiveTab('cruce_periodico')}
+          />
+        )}
+
+        {activeTab === 'cruce_periodico' && (
+          <CrucePeriodicoManager
+            empresa={selectedEmpresa}
+            accionistas={accionistas}
+            contratos={contratos}
+            tasaBCV={tasaBCV}
+            onOpenLineaCredito={handleOpenLineaCredito}
+            onNavigateToRecibosCupo={() => setActiveTab('recibos_cupo')}
+            onNavigateToRecibosPagos={() => setActiveTab('recibos_pagos')}
           />
         )}
 
@@ -339,7 +420,7 @@ export default function App() {
       <footer className="bg-white border-t border-slate-200 text-xs text-slate-500 py-5 mt-10 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-800">socio-doc</span>
+            <span className="font-extrabold text-slate-800 text-sm tracking-tight">Socio<span className="text-blue-600">-Doc</span></span>
             <span className="text-slate-300">•</span>
             <span>Blindaje Jurídico y Tributario de Cuentas de Socios en Venezuela</span>
           </div>
@@ -380,8 +461,11 @@ export default function App() {
         contrato={selectedContratoForLegal}
         empresa={selectedEmpresa}
         accionista={modalAccionista}
+        accionistas={accionistas}
         actaMacro={selectedActaForLegal}
         capitalizacionData={capitalizacionDataForLegal}
+        tasaBCV={tasaBCV}
+        onOpenMonthlyCalc={handleOpenMonthlyCalc}
       />
 
       {/* Modal: Capitalization of Debt to Capital Social */}
@@ -420,6 +504,7 @@ export default function App() {
         onUpdateEmpresa={handleSaveEmpresa}
         accionistas={accionistas}
         onSaveAccionista={handleSaveAccionista}
+        onDeleteAccionista={handleDeleteAccionista}
         contratos={contratos}
       />
 
@@ -430,6 +515,20 @@ export default function App() {
         empresa={selectedEmpresa}
         contratos={contratos}
         accionistas={accionistas}
+        tasaBCV={tasaBCV}
+      />
+
+      {/* Modal: Memoria de Cálculo Mensual de Intereses & Nota de Débito Fiscal */}
+      <MonthlyCalculationModal
+        isOpen={isMonthlyCalcOpen}
+        onClose={() => setIsMonthlyCalcOpen(false)}
+        contrato={selectedContratoForMonthlyCalc}
+        empresa={selectedEmpresa}
+        accionista={
+          selectedContratoForMonthlyCalc
+            ? accionistas.find(a => a.id === selectedContratoForMonthlyCalc.accionista_id)
+            : undefined
+        }
         tasaBCV={tasaBCV}
       />
 

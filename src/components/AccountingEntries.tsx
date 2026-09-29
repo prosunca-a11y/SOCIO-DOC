@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
 import { ContratoMutuo, Empresa, Accionista, AsientoContable } from '../types';
 import { formatVES, formatUSD } from '../utils/formatters';
 import { BookOpen, Copy, Download, Check, FileSpreadsheet, ArrowRight, ShieldCheck } from 'lucide-react';
@@ -69,7 +70,7 @@ export const AccountingEntries: React.FC<AccountingEntriesProps> = ({
     : `Préstamo corporativo temporal a socio autorizado bajo Contrato de Mutuo Nro. ${selectedContrato.correlativo}. Art. 72 LISLR con tasa activa de interés comercial pactada. Plazo ${selectedContrato.plazo_meses} meses.`;
 
   // Generate File Content for Export
-  const generateExportContent = () => {
+  const generateExportContent = (): string | string[][] => {
     if (sistemaDestino === 'Saint') {
       return `* COMPROBANTE DE DIARIO SAINT ENTERPRISE CONTABILIDAD
 * EMPRESA: ${empresa.razon_social} (RIF: ${empresa.rif_empresa})
@@ -95,26 +96,40 @@ ${selectedContrato.fecha_inicio}\t${cuentaDebitoCodigo}\t${cuentaDebitoNombre}\t
 ${selectedContrato.fecha_inicio}\t${cuentaCreditoCodigo}\t${cuentaCreditoNombre}\t0.00\t${montoVES.toFixed(2)}\t${glosa}`;
     }
 
-    // Generic CSV
-    return `Fecha,CodigoCuenta,NombreCuenta,Debito_VES,Credito_VES,Glosa_Legal
-${selectedContrato.fecha_inicio},${cuentaDebitoCodigo},"${cuentaDebitoNombre}",${montoVES.toFixed(2)},0.00,"${glosa}"
-${selectedContrato.fecha_inicio},${cuentaCreditoCodigo},"${cuentaCreditoNombre}",0.00,${montoVES.toFixed(2)},"${glosa}"`;
+    // Excel structure
+    return [
+      ['Fecha', 'CodigoCuenta', 'NombreCuenta', 'Debito_VES', 'Credito_VES', 'Glosa_Legal'],
+      [selectedContrato.fecha_inicio, cuentaDebitoCodigo, cuentaDebitoNombre, montoVES.toFixed(2), '0.00', glosa],
+      [selectedContrato.fecha_inicio, cuentaCreditoCodigo, cuentaCreditoNombre, '0.00', montoVES.toFixed(2), glosa]
+    ];
   };
 
   const handleDownload = () => {
-    const content = generateExportContent();
-    const ext = sistemaDestino === 'Excel' ? 'csv' : 'txt';
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Asiento_${selectedContrato.correlativo}_${sistemaDestino}.${ext}`;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (sistemaDestino === 'Excel') {
+        const rows = generateExportContent() as any;
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, 'Asiento Contable');
+        XLSX.writeFile(wb, `Asiento_${selectedContrato.correlativo}.xlsx`);
+    } else {
+        const content = generateExportContent() as any;
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Asiento_${selectedContrato.correlativo}_${sistemaDestino}.txt`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(generateExportContent());
+    const content = generateExportContent();
+    const textToCopy = typeof content === 'string' 
+      ? content 
+      : content.map(row => row.join('\t')).join('\n');
+      
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

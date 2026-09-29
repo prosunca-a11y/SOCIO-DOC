@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Empresa, Accionista, ContratoMutuo } from '../types';
 import { formatVES, formatUSD } from '../utils/formatters';
 import { 
-  downloadFiscalClosingCSV, 
+  downloadFiscalClosingExcel, 
   copyFiscalClosingToClipboard, 
   FiscalCsvOptions 
 } from '../utils/csvExport';
@@ -116,7 +116,7 @@ export const FiscalClosingReportModal: React.FC<FiscalClosingReportModalProps> =
       includeHeaderMetadata: true,
       includeSummary,
     };
-    downloadFiscalClosingCSV(empresa, contratos, accionistas, tasaBCV, options);
+    downloadFiscalClosingExcel(empresa, contratos, accionistas, tasaBCV, options);
   };
 
   const handleCopyClipboard = async () => {
@@ -151,7 +151,7 @@ export const FiscalClosingReportModal: React.FC<FiscalClosingReportModalProps> =
                   Cierre Fiscal SENIAT
                 </span>
                 <span className="text-xs text-slate-300">
-                  Exportación Consolidada CSV / Excel
+                  Exportación Consolidada Excel
                 </span>
               </div>
               <h2 className="text-lg font-bold text-white tracking-tight mt-0.5">
@@ -302,7 +302,7 @@ export const FiscalClosingReportModal: React.FC<FiscalClosingReportModalProps> =
             <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-semibold text-slate-700">
               <div className="flex items-center gap-1.5">
                 <Filter className="w-4 h-4 text-blue-600" />
-                <span>Filtros y Parámetros del Archivo CSV:</span>
+                <span>Filtros y Parámetros del Archivo Excel:</span>
               </div>
 
               {/* Format options */}
@@ -505,7 +505,7 @@ export const FiscalClosingReportModal: React.FC<FiscalClosingReportModalProps> =
                 Instrucciones para Auditoría Fiscal del SENIAT y Cierre de Ejercicio:
               </p>
               <p className="text-[11px] text-amber-800 leading-relaxed">
-                Este reporte consolidado en formato CSV contiene la codificación probatoria requerida por el SENIAT para verificar el origen y destino de fondos entre la sociedad mercantil y sus socios. Para las <strong>Cuentas por Pagar (2.1.03)</strong>, acredita la no causación de ingresos presuntos o ventas omitidas mediante el contrato de mutuo y soporte bancarizado. Para las <strong>Cuentas por Cobrar (1.1.03)</strong>, documenta los préstamos otorgados y mitiga reparos por dividendos presuntos conforme al Art. 72 de la Ley de ISLR.
+                Este reporte consolidado en formato Excel contiene la codificación probatoria requerida por el SENIAT para verificar el origen y destino de fondos entre la sociedad mercantil y sus socios. Para las <strong>Cuentas por Pagar (2.1.03)</strong>, acredita la no causación de ingresos presuntos o ventas omitidas mediante el contrato de mutuo y soporte bancarizado. Para las <strong>Cuentas por Cobrar (1.1.03)</strong>, documenta los préstamos otorgados y mitiga reparos por dividendos presuntos conforme al Art. 72 de la Ley de ISLR.
               </p>
             </div>
           </div>
@@ -542,7 +542,7 @@ export const FiscalClosingReportModal: React.FC<FiscalClosingReportModalProps> =
               className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl transition-all shadow-xs cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span>Descargar CSV para SENIAT</span>
+              <span>Descargar Excel para SENIAT</span>
             </button>
           </div>
         </div>
